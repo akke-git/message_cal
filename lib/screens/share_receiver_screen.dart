@@ -2,6 +2,8 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:receive_sharing_intent/receive_sharing_intent.dart';
 import 'package:intl/intl.dart';
+import 'package:message_cal/services/calendar_service.dart';
+import 'package:message_cal/services/auth_service.dart';
 
 class ShareReceiverScreen extends StatefulWidget {
   final String? initialText;
@@ -20,6 +22,7 @@ class _ShareReceiverScreenState extends State<ShareReceiverScreen> {
   DateTime? _selectedDate;
   TimeOfDay? _selectedTime;
   String _selectedCategory = '개인';
+  final CalendarService _calendarService = CalendarService();
 
   @override
   void initState() {
@@ -62,18 +65,76 @@ class _ShareReceiverScreenState extends State<ShareReceiverScreen> {
     });
   }
 
-  void _saveToCalendar() {
-    // TODO: Implement Google Calendar API integration
-    // For now, show success message
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          '일정이 저장되었습니다: ${_titleController.text}',
-        ),
-        backgroundColor: Colors.green,
+  Future<void> _saveToCalendar() async {
+    // 로그인 상태 확인
+    final authService = AuthService();
+    final isSignedIn = await authService.isSignedIn();
+    
+    if (!isSignedIn) {
+      _showErrorSnackBar('Google 계정에 로그인이 필요합니다.');
+      return;
+    }
+
+    // 필수 필드 검증
+    if (_titleController.text.isEmpty) {
+      _showErrorSnackBar('일정 제목을 입력해주세요.');
+      return;
+    }
+
+    if (_selectedDate == null) {
+      _showErrorSnackBar('날짜를 선택해주세요.');
+      return;
+    }
+
+    // 로딩 표시
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const Center(
+        child: CircularProgressIndicator(),
       ),
     );
-    Navigator.of(context).pop();
+
+    try {
+      final success = await _calendarService.createEvent(
+        title: _titleController.text,
+        startDate: _selectedDate!,
+        startTime: _selectedTime,
+        location: _locationController.text.isNotEmpty 
+            ? _locationController.text 
+            : null,
+        description: '원본 메시지: ${_textController.text}',
+        category: _selectedCategory,
+      );
+
+      Navigator.of(context).pop(); // 로딩 다이얼로그 닫기
+
+      if (success) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('일정이 Google Calendar에 저장되었습니다: ${_titleController.text}'),
+            backgroundColor: Colors.green,
+            duration: const Duration(seconds: 3),
+          ),
+        );
+        Navigator.of(context).pop(); // 화면 닫기
+      } else {
+        _showErrorSnackBar('일정 저장에 실패했습니다. 다시 시도해주세요.');
+      }
+    } catch (e) {
+      Navigator.of(context).pop(); // 로딩 다이얼로그 닫기
+      _showErrorSnackBar('오류가 발생했습니다: $e');
+    }
+  }
+
+  void _showErrorSnackBar(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: Colors.red,
+        duration: const Duration(seconds: 3),
+      ),
+    );
   }
   
   void _analyzeText(String text) {

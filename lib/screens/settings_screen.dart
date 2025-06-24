@@ -12,27 +12,95 @@ class SettingsScreen extends StatefulWidget {
 class _SettingsScreenState extends State<SettingsScreen> {
   final AuthService _authService = AuthService();
   GoogleSignInAccount? _currentUser;
+  bool _isLoading = false;
 
   @override
   void initState() {
     super.initState();
-    _currentUser = _authService.getCurrentUser();
+    _checkSignInStatus();
+  }
+
+  Future<void> _checkSignInStatus() async {
+    setState(() {
+      _isLoading = true;
+    });
+    
+    try {
+      final isSignedIn = await _authService.isSignedIn();
+      if (isSignedIn) {
+        _currentUser = _authService.getCurrentUser();
+      }
+    } catch (e) {
+      print('Error checking sign-in status: $e');
+    } finally {
+      setState(() {
+        _isLoading = false;
+      });
+    }
   }
 
   Future<void> _handleSignIn() async {
-    final user = await _authService.signInWithGoogle();
-    if (user != null) {
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      final user = await _authService.signInWithGoogle();
+      if (user != null) {
+        setState(() {
+          _currentUser = user;
+        });
+        _showSuccessSnackBar('Google 계정으로 로그인되었습니다');
+      } else {
+        _showErrorSnackBar('로그인에 실패했습니다. 다시 시도해주세요.');
+      }
+    } catch (e) {
+      _showErrorSnackBar('로그인 중 오류가 발생했습니다: $e');
+    } finally {
       setState(() {
-        _currentUser = user;
+        _isLoading = false;
       });
     }
   }
 
   Future<void> _handleSignOut() async {
-    await _authService.signOut();
     setState(() {
-      _currentUser = null;
+      _isLoading = true;
     });
+
+    try {
+      await _authService.signOut();
+      setState(() {
+        _currentUser = null;
+      });
+      _showSuccessSnackBar('로그아웃되었습니다');
+    } catch (e) {
+      _showErrorSnackBar('로그아웃 중 오류가 발생했습니다: $e');
+    } finally {
+      setState(() {
+        _isLoading = false;
+      });
+    }
+  }
+
+  void _showSuccessSnackBar(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: Colors.green,
+        duration: const Duration(seconds: 3),
+      ),
+    );
+  }
+
+  void _showErrorSnackBar(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: Colors.red,
+        duration: const Duration(seconds: 3),
+      ),
+    );
   }
 
   @override
@@ -58,22 +126,52 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ),
                   ),
                   const SizedBox(height: 16),
-                  if (_currentUser == null)
+                  if (_isLoading)
+                    const Center(
+                      child: Column(
+                        children: [
+                          CircularProgressIndicator(),
+                          SizedBox(height: 8),
+                          Text('처리 중...', style: TextStyle(color: Colors.grey)),
+                        ],
+                      ),
+                    )
+                  else if (_currentUser == null)
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text(
-                          'Google 캘린더와 동기하려면 로그인이 필요합니다.',
-                          style: TextStyle(color: Colors.grey),
+                        Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: Colors.orange.shade50,
+                            border: Border.all(color: Colors.orange.shade200),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Row(
+                            children: [
+                              Icon(Icons.warning, color: Colors.orange.shade600),
+                              const SizedBox(width: 8),
+                              const Expanded(
+                                child: Text(
+                                  'Google 캘린더와 동기하려면 로그인이 필요합니다.',
+                                  style: TextStyle(fontSize: 13),
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
-                        const SizedBox(height: 12),
-                        ElevatedButton.icon(
-                          onPressed: _handleSignIn,
-                          icon: const Icon(Icons.login),
-                          label: const Text('Google로 로그인'),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.blue,
-                            foregroundColor: Colors.white,
+                        const SizedBox(height: 16),
+                        SizedBox(
+                          width: double.infinity,
+                          child: ElevatedButton.icon(
+                            onPressed: _isLoading ? null : _handleSignIn,
+                            icon: const Icon(Icons.login),
+                            label: const Text('Google로 로그인'),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.blue,
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(vertical: 12),
+                            ),
                           ),
                         ),
                       ],
@@ -82,45 +180,103 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Row(
-                          children: [
-                            CircleAvatar(
-                              backgroundImage: _currentUser!.photoUrl != null
-                                  ? NetworkImage(_currentUser!.photoUrl!)
-                                  : null,
-                              child: _currentUser!.photoUrl == null
-                                  ? const Icon(Icons.person)
-                                  : null,
-                            ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    _currentUser!.displayName ?? '이름 없음',
-                                    style: const TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 16,
-                                    ),
-                                  ),
-                                  Text(
-                                    _currentUser!.email,
-                                    style: TextStyle(
-                                      color: Colors.grey[600],
-                                      fontSize: 14,
-                                    ),
-                                  ),
-                                ],
+                        Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: Colors.green.shade50,
+                            border: Border.all(color: Colors.green.shade200),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Row(
+                            children: [
+                              Icon(Icons.check_circle, color: Colors.green.shade600),
+                              const SizedBox(width: 8),
+                              const Expanded(
+                                child: Text(
+                                  'Google 계정에 연결되어 캘린더 동기화가 활성화되었습니다.',
+                                  style: TextStyle(fontSize: 13),
+                                ),
                               ),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
                         const SizedBox(height: 16),
-                        OutlinedButton.icon(
-                          onPressed: _handleSignOut,
-                          icon: const Icon(Icons.logout),
-                          label: const Text('로그아웃'),
+                        Container(
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: Colors.grey.shade50,
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: Colors.grey.shade200),
+                          ),
+                          child: Row(
+                            children: [
+                              CircleAvatar(
+                                radius: 30,
+                                backgroundImage: _currentUser!.photoUrl != null
+                                    ? NetworkImage(_currentUser!.photoUrl!)
+                                    : null,
+                                child: _currentUser!.photoUrl == null
+                                    ? const Icon(Icons.person, size: 30)
+                                    : null,
+                              ),
+                              const SizedBox(width: 16),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      _currentUser!.displayName ?? '이름 없음',
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 18,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      _currentUser!.email,
+                                      style: TextStyle(
+                                        color: Colors.grey[600],
+                                        fontSize: 14,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 8),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 8,
+                                        vertical: 4,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: Colors.green.shade100,
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                      child: Text(
+                                        '연결됨',
+                                        style: TextStyle(
+                                          color: Colors.green.shade700,
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        SizedBox(
+                          width: double.infinity,
+                          child: OutlinedButton.icon(
+                            onPressed: _isLoading ? null : _handleSignOut,
+                            icon: const Icon(Icons.logout),
+                            label: const Text('로그아웃'),
+                            style: OutlinedButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(vertical: 12),
+                              side: BorderSide(color: Colors.red.shade300),
+                              foregroundColor: Colors.red.shade600,
+                            ),
+                          ),
                         ),
                       ],
                     ),
@@ -204,7 +360,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    '앵 정보',
+                    '앱 정보',
                     style: Theme.of(context).textTheme.titleLarge?.copyWith(
                       fontWeight: FontWeight.bold,
                     ),

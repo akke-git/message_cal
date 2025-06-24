@@ -4,17 +4,25 @@ import 'package:message_cal/screens/home_screen.dart';
 import 'package:message_cal/screens/settings_screen.dart';
 
 class MainLayout extends StatefulWidget {
-  const MainLayout({super.key});
+  final int initialIndex;
+  
+  const MainLayout({super.key, this.initialIndex = 0});
 
   @override
   State<MainLayout> createState() => _MainLayoutState();
 }
 
 class _MainLayoutState extends State<MainLayout> {
-  int _selectedIndex = 0;
+  late int _selectedIndex;
+  
+  @override
+  void initState() {
+    super.initState();
+    _selectedIndex = widget.initialIndex;
+  }
 
-  final List<Widget> _widgetOptions = <Widget>[
-    const HomeScreen(),
+  late final List<Widget> _widgetOptions = <Widget>[
+    HomeScreen(onNavigateToSettings: () => _onItemTapped(2)),
     const CalendarScreen(),
     const SettingsScreen(),
   ];

@@ -8,7 +8,13 @@ MessageCal is a Flutter app that receives shared text messages from messaging ap
 
 ## Key Development Commands
 
-### Flutter Commands
+### IMPORTANT: Terminal Commands
+- **This project runs on Windows environment**
+- **Claude should NOT execute terminal/bash commands**
+- **User will manually run all Flutter commands in Windows terminal**
+- Commands listed below are for reference only
+
+### Flutter Commands (User executes manually)
 - `flutter run` - Run the app in debug mode
 - `flutter build apk` - Build APK for Android
 - `flutter build appbundle` - Build Android App Bundle for Play Store
@@ -33,9 +39,11 @@ MessageCal is a Flutter app that receives shared text messages from messaging ap
   - `lib/screens/splash_screen.dart` - App startup screen
   - `lib/screens/home_screen.dart` - Main dashboard with sharing intent listener
   - `lib/screens/share_receiver_screen.dart` - Processes shared text and creates calendar events
-  - `lib/screens/calendar_screen.dart` - Calendar view
+  - `lib/screens/calendar_screen.dart` - Calendar view with real Google Calendar events
   - `lib/screens/settings_screen.dart` - App settings
-- **Services**: `lib/services/auth_service.dart` - Google authentication for calendar access
+- **Services**: 
+  - `lib/services/auth_service.dart` - Google authentication for calendar access
+  - `lib/services/calendar_service.dart` - Google Calendar API integration
 
 ### Key Features
 1. **Intent Sharing**: Uses `receive_sharing_intent` package to receive text from other apps
@@ -54,6 +62,7 @@ MessageCal is a Flutter app that receives shared text messages from messaging ap
 - `receive_sharing_intent: ^1.4.5` - Handles Android sharing intents
 - `google_sign_in: ^6.0.0` - Google authentication
 - `googleapis: ^11.0.0` - Google Calendar API client
+- `googleapis_auth: ^1.4.1` - Google APIs authentication
 - `shared_preferences: ^2.0.0` - Local storage
 - `sqflite: ^2.0.0` - Local database
 - `intl: ^0.18.0` - Internationalization
@@ -61,10 +70,15 @@ MessageCal is a Flutter app that receives shared text messages from messaging ap
 
 ## Development Notes
 
-### Current Status (from PRD)
-- Basic project structure completed
-- Android sharing functionality implemented but needs testing
-- Google Calendar API integration partially implemented
+### Current Status
+- Basic project structure completed ✅
+- Android sharing functionality implemented ✅
+- Google Calendar API integration implemented ✅
+- CalendarService for API interactions created ✅
+- AuthService with proper scopes implemented ✅
+- ShareReceiverScreen with Calendar API integration ✅
+- CalendarScreen with real event display ✅
+- Android permissions and network settings added ✅
 - Text analysis and AI categorization features are planned
 
 ### Testing Sharing Functionality
@@ -86,9 +100,19 @@ MessageCal is a Flutter app that receives shared text messages from messaging ap
 - Uses `const` constructors where possible
 - Includes TODO comments for planned features
 
-## Next Development Steps (from PRD)
-1. Fix Android sharing functionality (priority)
-2. Implement Google Calendar API integration
-3. Add AI-powered message parsing
-4. Implement automatic categorization
-5. Add dashboard with schedule overview
+## Next Development Steps
+1. ✅ ~~Fix Android sharing functionality~~
+2. ✅ ~~Implement Google Calendar API integration~~
+3. Add Google login functionality to Settings screen
+4. Add AI-powered message parsing enhancement
+5. Implement automatic categorization improvement
+6. Add dashboard with schedule overview enhancement
+7. Comprehensive testing on physical device
+
+## Google Calendar API Integration Status
+- **OAuth 2.0 Setup**: Ready (requires Google Cloud Console configuration)
+- **CalendarService**: Implemented with create/read events functionality
+- **AuthService**: Enhanced with proper calendar scopes
+- **ShareReceiverScreen**: Integrated with Calendar API
+- **CalendarScreen**: Displays real Google Calendar events
+- **Android Permissions**: Added for network access

@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:message_cal/services/calendar_service.dart';
+import 'package:googleapis/calendar/v3.dart' as calendar;
 
 class CalendarScreen extends StatefulWidget {
   const CalendarScreen({super.key});
@@ -10,22 +12,54 @@ class CalendarScreen extends StatefulWidget {
 
 class _CalendarScreenState extends State<CalendarScreen> {
   DateTime _selectedDate = DateTime.now();
-  final List<Map<String, dynamic>> _events = [
-    {
-      'title': '샘플 회의',
-      'date': DateTime.now(),
-      'time': '14:00',
-      'location': '회의실 A',
-      'category': '업무',
-    },
-    {
-      'title': '병원 예약',
-      'date': DateTime.now().add(const Duration(days: 1)),
-      'time': '10:30',
-      'location': '서울대병원',
-      'category': '건강',
-    },
-  ];
+  final CalendarService _calendarService = CalendarService();
+  List<calendar.Event> _events = [];
+  bool _isLoading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadEvents();
+  }
+
+  Future<void> _loadEvents() async {
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      final events = await _calendarService.getEvents(
+        startDate: DateTime(_selectedDate.year, _selectedDate.month, 1),
+        endDate: DateTime(_selectedDate.year, _selectedDate.month + 1, 0),
+      );
+      
+      setState(() {
+        _events = events;
+        _isLoading = false;
+      });
+    } catch (e) {
+      setState(() {
+        _isLoading = false;
+      });
+      print('Failed to load events: $e');
+    }
+  }
+
+  String _getEventCategory(calendar.Event event) {
+    // colorId를 기반으로 카테고리 추정
+    switch (event.colorId) {
+      case '9':
+        return '업무';
+      case '10':
+        return '개인';
+      case '11':
+        return '건강';
+      case '5':
+        return '금융';
+      default:
+        return '기타';
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -60,6 +94,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                         _selectedDate.month - 1,
                       );
                     });
+                    _loadEvents();
                   },
                 ),
                 Text(
@@ -75,6 +110,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                         _selectedDate.month + 1,
                       );
                     });
+                    _loadEvents();
                   },
                 ),
               ],
@@ -118,68 +154,74 @@ class _CalendarScreenState extends State<CalendarScreen> {
                   ),
                   const SizedBox(height: 8),
                   Expanded(
-                    child: _events.isEmpty
-                        ? const Center(
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Icon(
-                                  Icons.event_note,
-                                  size: 60,
-                                  color: Colors.grey,
-                                ),
-                                SizedBox(height: 16),
-                                Text(
-                                  '등록된 일정이 없습니다',
-                                  style: TextStyle(color: Colors.grey),
-                                ),
-                              ],
-                            ),
-                          )
-                        : ListView.builder(
-                            itemCount: _events.length,
-                            itemBuilder: (context, index) {
-                              final event = _events[index];
-                              return Card(
-                                margin: const EdgeInsets.only(bottom: 8),
-                                child: ListTile(
-                                  leading: CircleAvatar(
-                                    backgroundColor: _getCategoryColor(event['category']),
-                                    child: Icon(
-                                      _getCategoryIcon(event['category']),
-                                      color: Colors.white,
-                                      size: 20,
+                    child: _isLoading
+                        ? const Center(child: CircularProgressIndicator())
+                        : _events.isEmpty
+                            ? const Center(
+                                child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Icon(
+                                      Icons.event_note,
+                                      size: 60,
+                                      color: Colors.grey,
                                     ),
-                                  ),
-                                  title: Text(
-                                    event['title'],
-                                    style: const TextStyle(fontWeight: FontWeight.bold),
-                                  ),
-                                  subtitle: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        '${DateFormat('MM월 dd일').format(event['date'])} ${event['time']}',
-                                      ),
-                                      if (event['location'] != null && event['location'].isNotEmpty)
-                                        Text(
-                                          '📍 ${event['location']}',
-                                          style: TextStyle(color: Colors.grey[600]),
+                                    SizedBox(height: 16),
+                                    Text(
+                                      '등록된 일정이 없습니다',
+                                      style: TextStyle(color: Colors.grey),
+                                    ),
+                                  ],
+                                ),
+                              )
+                            : ListView.builder(
+                                itemCount: _events.length,
+                                itemBuilder: (context, index) {
+                                  final event = _events[index];
+                                  final category = _getEventCategory(event);
+                                  final startTime = event.start?.dateTime ?? event.start?.date;
+                                  
+                                  return Card(
+                                    margin: const EdgeInsets.only(bottom: 8),
+                                    child: ListTile(
+                                      leading: CircleAvatar(
+                                        backgroundColor: _getCategoryColor(category),
+                                        child: Icon(
+                                          _getCategoryIcon(category),
+                                          color: Colors.white,
+                                          size: 20,
                                         ),
-                                    ],
-                                  ),
-                                  trailing: Text(
-                                    event['category'],
-                                    style: TextStyle(
-                                      color: _getCategoryColor(event['category']),
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 12,
+                                      ),
+                                      title: Text(
+                                        event.summary ?? '제목 없음',
+                                        style: const TextStyle(fontWeight: FontWeight.bold),
+                                      ),
+                                      subtitle: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          if (startTime != null)
+                                            Text(
+                                              '${DateFormat('MM월 dd일').format(startTime)} ${DateFormat('HH:mm').format(startTime)}',
+                                            ),
+                                          if (event.location != null && event.location!.isNotEmpty)
+                                            Text(
+                                              '📍 ${event.location}',
+                                              style: TextStyle(color: Colors.grey[600]),
+                                            ),
+                                        ],
+                                      ),
+                                      trailing: Text(
+                                        category,
+                                        style: TextStyle(
+                                          color: _getCategoryColor(category),
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 12,
+                                        ),
+                                      ),
                                     ),
-                                  ),
-                                ),
-                              );
-                            },
-                          ),
+                                  );
+                                },
+                              ),
                   ),
                 ],
               ),
