@@ -18,10 +18,10 @@ class _ShareReceiverScreenState extends State<ShareReceiverScreen> {
   late StreamSubscription _intentDataStreamSubscription;
   final TextEditingController _textController = TextEditingController();
   final TextEditingController _titleController = TextEditingController();
-  final TextEditingController _locationController = TextEditingController();
   DateTime? _selectedDate;
   TimeOfDay? _selectedTime;
   String _selectedCategory = '개인';
+  int _reminderMinutes = 30;
   final CalendarService _calendarService = CalendarService();
 
   @override
@@ -69,9 +69,13 @@ class _ShareReceiverScreenState extends State<ShareReceiverScreen> {
     // 로그인 상태 확인
     final authService = AuthService();
     final isSignedIn = await authService.isSignedIn();
+    final currentUser = authService.getCurrentUser();
     
-    if (!isSignedIn) {
-      _showErrorSnackBar('Google 계정에 로그인이 필요합니다.');
+    print('Is signed in: $isSignedIn');
+    print('Current user: $currentUser');
+    
+    if (!isSignedIn || currentUser == null) {
+      _showErrorSnackBar('Google 계정에 로그인이 필요합니다. 설정에서 로그인해주세요.');
       return;
     }
 
@@ -100,11 +104,10 @@ class _ShareReceiverScreenState extends State<ShareReceiverScreen> {
         title: _titleController.text,
         startDate: _selectedDate!,
         startTime: _selectedTime,
-        location: _locationController.text.isNotEmpty 
-            ? _locationController.text 
-            : null,
+        location: 'Seoul',
         description: '원본 메시지: ${_textController.text}',
         category: _selectedCategory,
+        reminderMinutes: _reminderMinutes,
       );
 
       Navigator.of(context).pop(); // 로딩 다이얼로그 닫기
@@ -147,12 +150,7 @@ class _ShareReceiverScreenState extends State<ShareReceiverScreen> {
       _titleController.text = lines.first.trim();
     }
     
-    // Look for location indicators
-    final locationRegex = RegExp(r'(에서|에|에서 만나|에서만나|@|at )([^\n,]+)', caseSensitive: false);
-    final locationMatch = locationRegex.firstMatch(text.toLowerCase());
-    if (locationMatch != null && locationMatch.groupCount >= 2) {
-      _locationController.text = locationMatch.group(2)?.trim() ?? '';
-    }
+    // Location is now auto-set to Seoul, no need to parse
     
     // Look for date/time indicators
     final now = DateTime.now();
@@ -228,7 +226,6 @@ class _ShareReceiverScreenState extends State<ShareReceiverScreen> {
     _intentDataStreamSubscription.cancel();
     _textController.dispose();
     _titleController.dispose();
-    _locationController.dispose();
     super.dispose();
   }
 
@@ -347,15 +344,29 @@ class _ShareReceiverScreenState extends State<ShareReceiverScreen> {
                     ),
                     const SizedBox(height: 16.0),
                     
-                    // Location
-                    TextField(
-                      controller: _locationController,
+                    // Reminder
+                    DropdownButtonFormField<int>(
+                      value: _reminderMinutes,
                       decoration: const InputDecoration(
-                        labelText: '장소',
+                        labelText: '알림',
                         border: OutlineInputBorder(),
-                        prefixIcon: Icon(Icons.location_on),
-                        hintText: '예: 강남역, 사무실 등',
+                        prefixIcon: Icon(Icons.alarm),
                       ),
+                      items: const [
+                        DropdownMenuItem(value: 0, child: Text('없음')),
+                        DropdownMenuItem(value: 10, child: Text('10분 전')),
+                        DropdownMenuItem(value: 30, child: Text('30분 전')),
+                        DropdownMenuItem(value: 60, child: Text('1시간 전')),
+                        DropdownMenuItem(value: 120, child: Text('2시간 전')),
+                        DropdownMenuItem(value: 1440, child: Text('1일 전')),
+                      ],
+                      onChanged: (value) {
+                        if (value != null) {
+                          setState(() {
+                            _reminderMinutes = value;
+                          });
+                        }
+                      },
                     ),
                     const SizedBox(height: 16.0),
                     
@@ -384,6 +395,18 @@ class _ShareReceiverScreenState extends State<ShareReceiverScreen> {
                     ),
                   ],
                 ),
+              ),
+            ),
+            const SizedBox(height: 24.0),
+            
+            // Save button
+            ElevatedButton.icon(
+              onPressed: _textController.text.isEmpty ? null : _saveToCalendar,
+              icon: const Icon(Icons.save),
+              label: const Text('캘린더에 저장'),
+              style: ElevatedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(vertical: 16.0),
+                textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
               ),
             ),
           ],

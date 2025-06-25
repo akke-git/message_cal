@@ -3,6 +3,10 @@ import 'dart:io' show Platform;
 import 'package:flutter/foundation.dart' show kIsWeb;
 
 class AuthService {
+  static final AuthService _instance = AuthService._internal();
+  factory AuthService() => _instance;
+  AuthService._internal();
+
   final GoogleSignIn _googleSignIn = GoogleSignIn(
     scopes: <String>[
       'email',

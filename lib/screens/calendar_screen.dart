@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:intl/intl.dart';
 import 'package:message_cal/services/calendar_service.dart';
 import 'package:googleapis/calendar/v3.dart' as calendar;
@@ -43,6 +44,17 @@ class _CalendarScreenState extends State<CalendarScreen> {
       });
       print('Failed to load events: $e');
     }
+  }
+
+  DateTime _convertToKoreanTime(DateTime utcTime, calendar.Event event) {
+    // Google Calendar API가 Asia/Seoul 시간대 이벤트를 UTC로 반환하는 경우
+    // 수동으로 9시간을 더해서 한국 시간으로 변환
+    if (event.start?.timeZone == 'Asia/Seoul' && utcTime.isUtc) {
+      return utcTime.add(const Duration(hours: 9));
+    }
+    
+    // 이미 로컬 시간인 경우 그대로 반환
+    return utcTime.toLocal();
   }
 
   String _getEventCategory(calendar.Event event) {
@@ -199,10 +211,21 @@ class _CalendarScreenState extends State<CalendarScreen> {
                                       subtitle: Column(
                                         crossAxisAlignment: CrossAxisAlignment.start,
                                         children: [
-                                          if (startTime != null)
+                                          if (startTime != null) ...[
                                             Text(
-                                              '${DateFormat('MM월 dd일').format(startTime)} ${DateFormat('HH:mm').format(startTime)}',
+                                              '${DateFormat('MM월 dd일').format(_convertToKoreanTime(startTime, event))} ${DateFormat('HH:mm').format(_convertToKoreanTime(startTime, event))}',
                                             ),
+                                            if (kDebugMode) ...[
+                                              Text(
+                                                'UTC: ${startTime}',
+                                                style: const TextStyle(fontSize: 9, color: Colors.red),
+                                              ),
+                                              Text(
+                                                'KST: ${_convertToKoreanTime(startTime, event)}',
+                                                style: const TextStyle(fontSize: 9, color: Colors.blue),
+                                              ),
+                                            ],
+                                          ],
                                           if (event.location != null && event.location!.isNotEmpty)
                                             Text(
                                               '📍 ${event.location}',

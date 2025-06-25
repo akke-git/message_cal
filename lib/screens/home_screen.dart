@@ -3,6 +3,9 @@ import 'package:flutter/material.dart';
 import 'package:receive_sharing_intent/receive_sharing_intent.dart';
 import 'package:message_cal/screens/share_receiver_screen.dart';
 import 'package:message_cal/services/auth_service.dart';
+import 'package:message_cal/services/calendar_service.dart';
+import 'package:googleapis/calendar/v3.dart' as calendar;
+import 'package:intl/intl.dart';
 import 'dart:io' show Platform;
 import 'package:flutter/foundation.dart' show kIsWeb;
 
@@ -19,7 +22,10 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   late StreamSubscription _intentDataStreamSubscription;
   String _sharedText = '';
   final AuthService _authService = AuthService();
+  final CalendarService _calendarService = CalendarService();
   bool _isSignedIn = false;
+  List<calendar.Event> _upcomingEvents = [];
+  bool _isLoadingEvents = false;
 
   Future<void> _checkSignInStatus() async {
     try {
@@ -27,8 +33,36 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       setState(() {
         _isSignedIn = isSignedIn;
       });
+      
+      if (isSignedIn) {
+        _loadUpcomingEvents();
+      }
     } catch (e) {
       print('Error checking sign-in status: $e');
+    }
+  }
+
+  Future<void> _loadUpcomingEvents() async {
+    setState(() {
+      _isLoadingEvents = true;
+    });
+    
+    try {
+      final now = DateTime.now();
+      final events = await _calendarService.getEvents(
+        startDate: DateTime(now.year, now.month, 1),
+        endDate: DateTime(now.year, now.month + 1, 0),
+      );
+      
+      setState(() {
+        _upcomingEvents = events;
+        _isLoadingEvents = false;
+      });
+    } catch (e) {
+      print('Error loading events: $e');
+      setState(() {
+        _isLoadingEvents = false;
+      });
     }
   }
 
@@ -107,106 +141,345 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     return Scaffold(
       appBar: AppBar(
         title: const Text('MessageCal'),
+        actions: [
+          // 간단한 로그인 상태 표시
+          Container(
+            margin: const EdgeInsets.only(right: 16),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  _isSignedIn ? Icons.check_circle : Icons.warning,
+                  color: _isSignedIn ? Colors.green : Colors.orange,
+                  size: 20,
+                ),
+                const SizedBox(width: 4),
+                Text(
+                  _isSignedIn ? '연결됨' : '미연결',
+                  style: TextStyle(
+                    color: _isSignedIn ? Colors.green : Colors.orange,
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
-      body: Center(
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              // Login Status Card
-              Card(
-                margin: const EdgeInsets.only(bottom: 30),
-                child: Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Row(
-                    children: [
-                      Icon(
-                        _isSignedIn ? Icons.check_circle : Icons.warning,
-                        color: _isSignedIn ? Colors.green : Colors.orange,
-                        size: 24,
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // 배너 이미지
+            Container(
+              width: double.infinity,
+              height: 200,
+              margin: const EdgeInsets.only(bottom: 24),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [Colors.blue[400]!, Colors.blue[600]!],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                borderRadius: BorderRadius.circular(16),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.blue.withOpacity(0.3),
+                    blurRadius: 10,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: Stack(
+                children: [
+                  // 배경 패턴
+                  Positioned.fill(
+                    child: Container(
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(16),
                       ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              _isSignedIn ? 'Google 계정 연결됨' : 'Google 계정 연결 필요',
-                              style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                color: _isSignedIn ? Colors.green : Colors.orange,
+                      child: CustomPaint(
+                        painter: _BannerPatternPainter(),
+                      ),
+                    ),
+                  ),
+                  // 텍스트 내용
+                  Padding(
+                    padding: const EdgeInsets.all(24.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(
+                          Icons.calendar_month,
+                          color: Colors.white,
+                          size: 40,
+                        ),
+                        const SizedBox(height: 12),
+                        const Text(
+                          'MessageCal',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 28,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        const Text(
+                          '메시지를 공유하면\n자동으로 일정이 생성됩니다',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 16,
+                            height: 1.3,
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.2),
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(color: Colors.white.withOpacity(0.3)),
+                          ),
+                          child: const Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.share, color: Colors.white, size: 16),
+                              SizedBox(width: 6),
+                              Text(
+                                '공유하기',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w500,
+                                ),
                               ),
-                            ),
-                            Text(
-                              _isSignedIn 
-                                  ? '캘린더 동기화가 활성화되었습니다'
-                                  : '설정에서 Google 계정에 로그인하세요',
-                              style: const TextStyle(fontSize: 12, color: Colors.grey),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            // 이번 달 일정 (캘린더 화면에서 가져온 로직)
+            if (_isSignedIn) ...[
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    '이번 달 일정',
+                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.refresh),
+                    onPressed: _loadUpcomingEvents,
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              _buildMonthlyEvents(),
+            ] else ...[
+              // 로그인 안내 카드
+              Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(20.0),
+                  child: Column(
+                    children: [
+                      Icon(Icons.account_circle, size: 50, color: Colors.grey[400]),
+                      const SizedBox(height: 16),
+                      const Text(
+                        'Google 계정 연결이 필요합니다',
+                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
                       ),
-                      if (!_isSignedIn)
-                        TextButton(
-                          onPressed: widget.onNavigateToSettings,
-                          child: const Text('설정'),
-                        ),
+                      const SizedBox(height: 8),
+                      const Text(
+                        '설정에서 Google 계정에 로그인하면\n일정을 확인할 수 있습니다',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(color: Colors.grey),
+                      ),
+                      const SizedBox(height: 16),
+                      ElevatedButton(
+                        onPressed: widget.onNavigateToSettings,
+                        child: const Text('설정으로 이동'),
+                      ),
                     ],
                   ),
                 ),
               ),
-              
-              const Icon(
-                Icons.share,
-                size: 60,
-                color: Colors.blue,
-              ),
-              const SizedBox(height: 20),
-              const Text(
-                '메신저에서 공유하여 일정을 추가하세요',
-                textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w500),
-              ),
-              const SizedBox(height: 10),
-              const Text(
-                '메시지를 선택하고 공유 버튼을 눌러\nMessageCal을 선택하세요',
-                textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 14, color: Colors.grey),
-              ),
-              if (_sharedText.isNotEmpty)
-                Padding(
-                  padding: const EdgeInsets.only(top: 30.0),
-                  child: Card(
-                    margin: const EdgeInsets.symmetric(horizontal: 20),
-                    child: Padding(
-                      padding: const EdgeInsets.all(16.0),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text(
-                            '최근 수신된 메시지:',
-                            style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 16,
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            _sharedText,
-                            style: const TextStyle(fontSize: 14),
-                            maxLines: 3,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
             ],
-          ),
+          ],
         ),
       ),
     );
   }
+
+  DateTime _convertToKoreanTime(DateTime utcTime, calendar.Event event) {
+    // Google Calendar API가 Asia/Seoul 시간대 이벤트를 UTC로 반환하는 경우
+    // 수동으로 9시간을 더해서 한국 시간으로 변환
+    if (event.start?.timeZone == 'Asia/Seoul' && utcTime.isUtc) {
+      return utcTime.add(const Duration(hours: 9));
+    }
+    
+    // 이미 로컬 시간인 경우 그대로 반환
+    return utcTime.toLocal();
+  }
+
+  Widget _buildMonthlyEvents() {
+    if (_isLoadingEvents) {
+      return const Card(
+        child: Padding(
+          padding: EdgeInsets.all(20.0),
+          child: Center(child: CircularProgressIndicator()),
+        ),
+      );
+    }
+
+    if (_upcomingEvents.isEmpty) {
+      return Card(
+        child: Padding(
+          padding: const EdgeInsets.all(20.0),
+          child: Column(
+            children: [
+              Icon(Icons.event_note, size: 60, color: Colors.grey[400]),
+              const SizedBox(height: 16),
+              const Text(
+                '등록된 일정이 없습니다',
+                style: TextStyle(fontSize: 16, color: Colors.grey),
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                '메신저에서 메시지를 공유하거나\n추가 탭에서 직접 일정을 만들어보세요',
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 12, color: Colors.grey),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    return ListView.builder(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      itemCount: _upcomingEvents.length,
+      itemBuilder: (context, index) {
+        final event = _upcomingEvents[index];
+        final category = _getEventCategory(event);
+        final startTime = event.start?.dateTime ?? event.start?.date;
+        
+        return Card(
+          margin: const EdgeInsets.only(bottom: 8),
+          child: ListTile(
+            leading: CircleAvatar(
+              backgroundColor: _getCategoryColor(category),
+              child: Icon(
+                _getCategoryIcon(category),
+                color: Colors.white,
+                size: 20,
+              ),
+            ),
+            title: Text(
+              event.summary ?? '제목 없음',
+              style: const TextStyle(fontWeight: FontWeight.bold),
+            ),
+            subtitle: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (startTime != null)
+                  Text(
+                    '${DateFormat('MM월 dd일').format(_convertToKoreanTime(startTime, event))} ${DateFormat('HH:mm').format(_convertToKoreanTime(startTime, event))}',
+                  ),
+                if (event.location != null && event.location!.isNotEmpty)
+                  Text(
+                    '📍 ${event.location}',
+                    style: TextStyle(color: Colors.grey[600]),
+                  ),
+              ],
+            ),
+            trailing: Text(
+              category,
+              style: TextStyle(
+                color: _getCategoryColor(category),
+                fontWeight: FontWeight.bold,
+                fontSize: 12,
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  String _getEventCategory(calendar.Event event) {
+    switch (event.colorId) {
+      case '9':
+        return '업무';
+      case '10':
+        return '개인';
+      case '11':
+        return '건강';
+      case '5':
+        return '금융';
+      default:
+        return '기타';
+    }
+  }
+  
+  Color _getCategoryColor(String category) {
+    switch (category) {
+      case '업무':
+        return Colors.blue;
+      case '개인':
+        return Colors.green;
+      case '건강':
+        return Colors.red;
+      case '금융':
+        return Colors.orange;
+      default:
+        return Colors.grey;
+    }
+  }
+  
+  IconData _getCategoryIcon(String category) {
+    switch (category) {
+      case '업무':
+        return Icons.work;
+      case '개인':
+        return Icons.person;
+      case '건강':
+        return Icons.health_and_safety;
+      case '금융':
+        return Icons.account_balance;
+      default:
+        return Icons.event;
+    }
+  }
+}
+
+// 배너용 패턴 페인터
+class _BannerPatternPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = Colors.white.withOpacity(0.1)
+      ..strokeWidth = 1;
+
+    // 격자 패턴 그리기
+    for (double i = 0; i < size.width; i += 30) {
+      canvas.drawLine(Offset(i, 0), Offset(i, size.height), paint);
+    }
+    for (double i = 0; i < size.height; i += 30) {
+      canvas.drawLine(Offset(0, i), Offset(size.width, i), paint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(CustomPainter oldDelegate) => false;
 }

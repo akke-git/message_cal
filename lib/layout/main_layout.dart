@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:message_cal/screens/calendar_screen.dart';
+import 'package:message_cal/screens/add_screen.dart';
 import 'package:message_cal/screens/home_screen.dart';
 import 'package:message_cal/screens/settings_screen.dart';
 
@@ -23,7 +23,7 @@ class _MainLayoutState extends State<MainLayout> {
 
   late final List<Widget> _widgetOptions = <Widget>[
     HomeScreen(onNavigateToSettings: () => _onItemTapped(2)),
-    const CalendarScreen(),
+    const AddScreen(),
     const SettingsScreen(),
   ];
 
@@ -46,8 +46,8 @@ class _MainLayoutState extends State<MainLayout> {
             label: '홈',
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.calendar_today),
-            label: '캘린더',
+            icon: Icon(Icons.add_circle),
+            label: '추가',
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.settings),
