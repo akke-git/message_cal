@@ -15,7 +15,7 @@ class _AddScreenState extends State<AddScreen> {
   final TextEditingController _titleController = TextEditingController();
   DateTime? _selectedDate;
   TimeOfDay? _selectedTime;
-  String _selectedCategory = '개인';
+  String _selectedCategory = '점심';
   int _reminderMinutes = 30;
   final CalendarService _calendarService = CalendarService();
 
@@ -80,7 +80,7 @@ class _AddScreenState extends State<AddScreen> {
         setState(() {
           _selectedDate = null;
           _selectedTime = null;
-          _selectedCategory = '개인';
+          _selectedCategory = '점심';
           _reminderMinutes = 30;
         });
       } else {
@@ -131,54 +131,132 @@ class _AddScreenState extends State<AddScreen> {
   void _analyzeText(String text) {
     if (text.isEmpty) return;
     
-    // Basic text analysis - extract potential schedule information
-    // Extract title (first line or sentence)
-    final lines = text.split('\n');
+    final cleanText = text.toLowerCase().trim();
+    
+    // 1. 제목 추출 개선
+    _extractTitle(text);
+    
+    // 2. 날짜 분석 개선
+    _extractDate(cleanText);
+    
+    // 3. 시간 분석 개선
+    _extractTime(cleanText);
+    
+    // 4. 카테고리 분석 개선
+    _extractCategory(cleanText);
+    
+    setState(() {});
+  }
+
+  void _extractTitle(String text) {
+    // 줄바꿈으로 분리해서 가장 의미있는 첫 번째 줄을 제목으로
+    final lines = text.split('\n').where((line) => line.trim().isNotEmpty).toList();
     if (lines.isNotEmpty) {
-      _titleController.text = lines.first.trim();
+      String title = lines.first.trim();
+      // 불필요한 접두사 제거
+      title = title.replaceAll(RegExp(r'^(안녕하세요|안녕|헤이|하이|[!@#$%^&*()])+'), '').trim();
+      _titleController.text = title.isNotEmpty ? title : '일정';
     }
-    
-    // Look for date/time indicators
+  }
+
+  void _extractDate(String text) {
     final now = DateTime.now();
-    if (text.contains('내일')) {
+    
+    // 상대적 날짜
+    if (text.contains('내일') || text.contains('tomorrow')) {
       _selectedDate = now.add(const Duration(days: 1));
-    } else if (text.contains('모레')) {
+    } else if (text.contains('모레') || text.contains('day after tomorrow')) {
       _selectedDate = now.add(const Duration(days: 2));
-    } else if (text.contains('오늘')) {
+    } else if (text.contains('오늘') || text.contains('today')) {
       _selectedDate = now;
+    } else if (text.contains('다음주') || text.contains('담주')) {
+      _selectedDate = now.add(const Duration(days: 7));
     }
     
-    // Look for time indicators
-    final timeRegex = RegExp(r'(\d{1,2})시|(\d{1,2}):(\d{2})|오후 (\d{1,2})시|오전 (\d{1,2})시');
-    final timeMatch = timeRegex.firstMatch(text);
-    if (timeMatch != null) {
+    // 구체적 날짜 패턴
+    final dateRegex = RegExp(r'(\d{1,2})월\s*(\d{1,2})일');
+    final dateMatch = dateRegex.firstMatch(text);
+    if (dateMatch != null) {
+      final month = int.tryParse(dateMatch.group(1)!) ?? now.month;
+      final day = int.tryParse(dateMatch.group(2)!) ?? now.day;
+      int year = now.year;
+      
+      // 월이 현재보다 작으면 내년으로 설정
+      if (month < now.month || (month == now.month && day < now.day)) {
+        year = now.year + 1;
+      }
+      
+      _selectedDate = DateTime(year, month, day);
+    }
+  }
+
+  void _extractTime(String text) {
+    // 오전/오후 시간
+    final amPmRegex = RegExp(r'(오전|오후)\s*(\d{1,2})(?:시)?(?:\s*(\d{1,2})분?)?');
+    final amPmMatch = amPmRegex.firstMatch(text);
+    if (amPmMatch != null) {
+      final isPm = amPmMatch.group(1) == '오후';
+      int hour = int.tryParse(amPmMatch.group(2)!) ?? 0;
+      final minute = int.tryParse(amPmMatch.group(3) ?? '0') ?? 0;
+      
+      if (isPm && hour != 12) hour += 12;
+      if (!isPm && hour == 12) hour = 0;
+      
+      _selectedTime = TimeOfDay(hour: hour, minute: minute);
+      return;
+    }
+    
+    // 24시간 형식
+    final time24Regex = RegExp(r'(\d{1,2}):(\d{2})|(\d{1,2})시(?:\s*(\d{1,2})분?)?');
+    final time24Match = time24Regex.firstMatch(text);
+    if (time24Match != null) {
       int hour = 0;
       int minute = 0;
       
-      if (timeMatch.group(1) != null) {
-        hour = int.tryParse(timeMatch.group(1)!) ?? 0;
-      } else if (timeMatch.group(2) != null && timeMatch.group(3) != null) {
-        hour = int.tryParse(timeMatch.group(2)!) ?? 0;
-        minute = int.tryParse(timeMatch.group(3)!) ?? 0;
-      } else if (timeMatch.group(4) != null) {
-        hour = (int.tryParse(timeMatch.group(4)!) ?? 0) + 12;
-      } else if (timeMatch.group(5) != null) {
-        hour = int.tryParse(timeMatch.group(5)!) ?? 0;
+      if (time24Match.group(1) != null && time24Match.group(2) != null) {
+        hour = int.tryParse(time24Match.group(1)!) ?? 0;
+        minute = int.tryParse(time24Match.group(2)!) ?? 0;
+      } else if (time24Match.group(3) != null) {
+        hour = int.tryParse(time24Match.group(3)!) ?? 0;
+        minute = int.tryParse(time24Match.group(4) ?? '0') ?? 0;
       }
       
       _selectedTime = TimeOfDay(hour: hour, minute: minute);
     }
+  }
+
+  void _extractCategory(String text) {
+    // 카테고리별 키워드와 가중치
+    final categoryKeywords = {
+      '예약': ['예약', '병원', '미용실', '치과', '상담', '약속', '클리닉'],
+      '점심': ['점심', '식사', '밥', '먹자', '맛집', '카페', '브런치', '저녁'],
+      '골프': ['골프', '라운딩', '필드', '연습장', '운동', '헬스', '짐', '수영'],
+      '결제': ['결제', '카드값', '대금', '청구서', '납부', '요금', '비용'],
+      '기념일': ['생일', '기념일', '축하', '파티', '선물', '이벤트'],
+      '회사': ['회의', '업무', '출장', '프레젠테이션', '미팅', '컨퍼런스', '워크샵'],
+    };
     
-    // Categorize based on keywords
-    if (text.contains('회의') || text.contains('미팅') || text.contains('업무')) {
-      _selectedCategory = '업무';
-    } else if (text.contains('병원') || text.contains('운동') || text.contains('헬스')) {
-      _selectedCategory = '건강';
-    } else if (text.contains('상담') || text.contains('투자') || text.contains('보험')) {
-      _selectedCategory = '금융';
+    String bestCategory = '점심'; // 기본값
+    int maxScore = 0;
+    
+    for (final entry in categoryKeywords.entries) {
+      final category = entry.key;
+      final keywords = entry.value;
+      int score = 0;
+      
+      for (final keyword in keywords) {
+        if (text.contains(keyword)) {
+          score += keyword.length; // 긴 키워드에 더 높은 점수
+        }
+      }
+      
+      if (score > maxScore) {
+        maxScore = score;
+        bestCategory = category;
+      }
     }
     
-    setState(() {});
+    _selectedCategory = bestCategory;
   }
 
   @override
@@ -326,10 +404,12 @@ class _AddScreenState extends State<AddScreen> {
                         prefixIcon: Icon(Icons.category),
                       ),
                       items: const [
-                        DropdownMenuItem(value: '개인', child: Text('개인')),
-                        DropdownMenuItem(value: '업무', child: Text('업무')),
-                        DropdownMenuItem(value: '건강', child: Text('건강')),
-                        DropdownMenuItem(value: '금융', child: Text('금융')),
+                        DropdownMenuItem(value: '예약', child: Text('예약')),
+                        DropdownMenuItem(value: '점심', child: Text('점심')),
+                        DropdownMenuItem(value: '골프', child: Text('골프')),
+                        DropdownMenuItem(value: '결제', child: Text('결제')),
+                        DropdownMenuItem(value: '기념일', child: Text('기념일')),
+                        DropdownMenuItem(value: '회사', child: Text('회사')),
                         DropdownMenuItem(value: '기타', child: Text('기타')),
                       ],
                       onChanged: (value) {

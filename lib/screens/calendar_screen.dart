@@ -33,7 +33,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
         startDate: DateTime(_selectedDate.year, _selectedDate.month, 1),
         endDate: DateTime(_selectedDate.year, _selectedDate.month + 1, 0),
       );
-      
+
       setState(() {
         _events = events;
         _isLoading = false;
@@ -52,7 +52,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
     if (event.start?.timeZone == 'Asia/Seoul' && utcTime.isUtc) {
       return utcTime.add(const Duration(hours: 9));
     }
-    
+
     // 이미 로컬 시간인 경우 그대로 반환
     return utcTime.toLocal();
   }
@@ -61,13 +61,17 @@ class _CalendarScreenState extends State<CalendarScreen> {
     // colorId를 기반으로 카테고리 추정
     switch (event.colorId) {
       case '9':
-        return '업무';
+        return '예약';
       case '10':
-        return '개인';
+        return '점심';
       case '11':
-        return '건강';
+        return '골프';
       case '5':
-        return '금융';
+        return '결제';
+      case '6':
+        return '기념일';
+      case '7':
+        return '회사';
       default:
         return '기타';
     }
@@ -128,7 +132,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
               ],
             ),
           ),
-          
+
           // Calendar grid placeholder
           Container(
             height: 200,
@@ -141,16 +145,13 @@ class _CalendarScreenState extends State<CalendarScreen> {
               child: Text(
                 '달력 뷰\n(향후 구현 예정)',
                 textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 16,
-                  color: Colors.grey,
-                ),
+                style: TextStyle(fontSize: 16, color: Colors.grey),
               ),
             ),
           ),
-          
+
           const SizedBox(height: 16),
-          
+
           // Events list
           Expanded(
             child: Container(
@@ -159,92 +160,93 @@ class _CalendarScreenState extends State<CalendarScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    '이번 달 일정',
+                    'Recents',
                     style: Theme.of(context).textTheme.titleLarge?.copyWith(
                       fontWeight: FontWeight.bold,
                     ),
                   ),
                   const SizedBox(height: 8),
                   Expanded(
-                    child: _isLoading
-                        ? const Center(child: CircularProgressIndicator())
-                        : _events.isEmpty
+                    child:
+                        _isLoading
+                            ? const Center(child: CircularProgressIndicator())
+                            : _events.isEmpty
                             ? const Center(
-                                child: Column(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Icon(
-                                      Icons.event_note,
-                                      size: 60,
-                                      color: Colors.grey,
-                                    ),
-                                    SizedBox(height: 16),
-                                    Text(
-                                      '등록된 일정이 없습니다',
-                                      style: TextStyle(color: Colors.grey),
-                                    ),
-                                  ],
-                                ),
-                              )
-                            : ListView.builder(
-                                itemCount: _events.length,
-                                itemBuilder: (context, index) {
-                                  final event = _events[index];
-                                  final category = _getEventCategory(event);
-                                  final startTime = event.start?.dateTime ?? event.start?.date;
-                                  
-                                  return Card(
-                                    margin: const EdgeInsets.only(bottom: 8),
-                                    child: ListTile(
-                                      leading: CircleAvatar(
-                                        backgroundColor: _getCategoryColor(category),
-                                        child: Icon(
-                                          _getCategoryIcon(category),
-                                          color: Colors.white,
-                                          size: 20,
-                                        ),
-                                      ),
-                                      title: Text(
-                                        event.summary ?? '제목 없음',
-                                        style: const TextStyle(fontWeight: FontWeight.bold),
-                                      ),
-                                      subtitle: Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
-                                        children: [
-                                          if (startTime != null) ...[
-                                            Text(
-                                              '${DateFormat('MM월 dd일').format(_convertToKoreanTime(startTime, event))} ${DateFormat('HH:mm').format(_convertToKoreanTime(startTime, event))}',
-                                            ),
-                                            if (kDebugMode) ...[
-                                              Text(
-                                                'UTC: ${startTime}',
-                                                style: const TextStyle(fontSize: 9, color: Colors.red),
-                                              ),
-                                              Text(
-                                                'KST: ${_convertToKoreanTime(startTime, event)}',
-                                                style: const TextStyle(fontSize: 9, color: Colors.blue),
-                                              ),
-                                            ],
-                                          ],
-                                          if (event.location != null && event.location!.isNotEmpty)
-                                            Text(
-                                              '📍 ${event.location}',
-                                              style: TextStyle(color: Colors.grey[600]),
-                                            ),
-                                        ],
-                                      ),
-                                      trailing: Text(
-                                        category,
-                                        style: TextStyle(
-                                          color: _getCategoryColor(category),
-                                          fontWeight: FontWeight.bold,
-                                          fontSize: 12,
-                                        ),
-                                      ),
-                                    ),
-                                  );
-                                },
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(
+                                    Icons.event_note,
+                                    size: 60,
+                                    color: Colors.grey,
+                                  ),
+                                  SizedBox(height: 16),
+                                  Text(
+                                    '등록된 일정이 없습니다',
+                                    style: TextStyle(color: Colors.grey),
+                                  ),
+                                ],
                               ),
+                            )
+                            : ListView.builder(
+                              itemCount: _events.length,
+                              itemBuilder: (context, index) {
+                                final event = _events[index];
+                                final category = _getEventCategory(event);
+                                final startTime =
+                                    event.start?.dateTime ?? event.start?.date;
+
+                                return Card(
+                                  margin: const EdgeInsets.only(bottom: 8),
+                                  child: ListTile(
+                                    leading: CircleAvatar(
+                                      backgroundColor: _getCategoryColor(
+                                        category,
+                                      ),
+                                      child: Icon(
+                                        _getCategoryIcon(category),
+                                        color: Colors.white,
+                                        size: 20,
+                                      ),
+                                    ),
+                                    title: Text(
+                                      event.summary ?? '제목 없음',
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                    subtitle: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        if (startTime != null) ...[
+                                          Text(
+                                            '${DateFormat('MM월 dd일').format(_convertToKoreanTime(startTime, event))} ${DateFormat('HH:mm').format(_convertToKoreanTime(startTime, event))}',
+                                          ),
+                                          // 디버그 정보 제거 (릴리즈용)
+                                        ],
+                                        if (event.location != null &&
+                                            event.location!.isNotEmpty)
+                                          Text(
+                                            '📍 ${event.location}',
+                                            style: TextStyle(
+                                              color: Colors.grey[600],
+                                            ),
+                                          ),
+                                      ],
+                                    ),
+                                    trailing: Text(
+                                      category,
+                                      style: TextStyle(
+                                        color: _getCategoryColor(category),
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 12,
+                                      ),
+                                    ),
+                                  ),
+                                );
+                              },
+                            ),
                   ),
                 ],
               ),
@@ -254,32 +256,40 @@ class _CalendarScreenState extends State<CalendarScreen> {
       ),
     );
   }
-  
+
   Color _getCategoryColor(String category) {
     switch (category) {
-      case '업무':
-        return Colors.blue;
-      case '개인':
-        return Colors.green;
-      case '건강':
-        return Colors.red;
-      case '금융':
-        return Colors.orange;
+      case '예약':
+        return const Color(0xFF3788D8); // Google Calendar 파란색 (colorId: 9)
+      case '점심':
+        return const Color(0xFF0B8043); // Google Calendar 초록색 (colorId: 10)
+      case '골프':
+        return const Color(0xFFD50000); // Google Calendar 빨간색 (colorId: 11)
+      case '결제':
+        return const Color(0xFFFF6D01); // Google Calendar 주황색 (colorId: 5)
+      case '기념일':
+        return const Color(0xFFAD1457); // Google Calendar 자주색 (colorId: 6)
+      case '회사':
+        return const Color(0xFF8E24AA); // Google Calendar 보라색 (colorId: 7)
       default:
-        return Colors.grey;
+        return const Color(0xFF29B6F6); // 연한 하늘색
     }
   }
-  
+
   IconData _getCategoryIcon(String category) {
     switch (category) {
-      case '업무':
-        return Icons.work;
-      case '개인':
-        return Icons.person;
-      case '건강':
-        return Icons.health_and_safety;
-      case '금융':
-        return Icons.account_balance;
+      case '예약':
+        return Icons.calendar_today;
+      case '점심':
+        return Icons.restaurant;
+      case '골프':
+        return Icons.golf_course;
+      case '결제':
+        return Icons.payment;
+      case '기념일':
+        return Icons.celebration;
+      case '회사':
+        return Icons.business;
       default:
         return Icons.event;
     }

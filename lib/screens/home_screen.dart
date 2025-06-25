@@ -11,7 +11,7 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 
 class HomeScreen extends StatefulWidget {
   final VoidCallback? onNavigateToSettings;
-  
+
   const HomeScreen({super.key, this.onNavigateToSettings});
 
   @override
@@ -33,7 +33,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       setState(() {
         _isSignedIn = isSignedIn;
       });
-      
+
       if (isSignedIn) {
         _loadUpcomingEvents();
       }
@@ -46,14 +46,14 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     setState(() {
       _isLoadingEvents = true;
     });
-    
+
     try {
       final now = DateTime.now();
       final events = await _calendarService.getEvents(
         startDate: DateTime(now.year, now.month, 1),
         endDate: DateTime(now.year, now.month + 1, 0),
       );
-      
+
       setState(() {
         _upcomingEvents = events;
         _isLoadingEvents = false;
@@ -80,26 +80,42 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     // 모바일 플랫폼에서만 공유 인텐트 초기화
     if (_isMobilePlatform()) {
       // 앱이 실행 중일 때 공유 데이터를 수신하는 리스너
-      _intentDataStreamSubscription =
-          ReceiveSharingIntent.instance.getMediaStream().listen((List<SharedMediaFile> value) {
-        final textFiles = value.where((file) => file.type == SharedMediaType.text).toList();
-        if (textFiles.isNotEmpty) {
-          final sharedText = textFiles.first.path; // For text sharing, path contains the actual text
-          setState(() {
-            _sharedText = sharedText;
-          });
-          _navigateToShareReceiver(sharedText);
-        }
-      }, onError: (err) {
-        debugPrint("getMediaStream error: $err");
-      });
+      _intentDataStreamSubscription = ReceiveSharingIntent.instance
+          .getMediaStream()
+          .listen(
+            (List<SharedMediaFile> value) {
+              final textFiles =
+                  value
+                      .where((file) => file.type == SharedMediaType.text)
+                      .toList();
+              if (textFiles.isNotEmpty) {
+                final sharedText =
+                    textFiles
+                        .first
+                        .path; // For text sharing, path contains the actual text
+                setState(() {
+                  _sharedText = sharedText;
+                });
+                _navigateToShareReceiver(sharedText);
+              }
+            },
+            onError: (err) {
+              debugPrint("getMediaStream error: $err");
+            },
+          );
 
       // 앱이 종료된 상태에서 공유를 통해 실행되었을 때 데이터를 수신
-      ReceiveSharingIntent.instance.getInitialMedia().then((List<SharedMediaFile> value) {
+      ReceiveSharingIntent.instance.getInitialMedia().then((
+        List<SharedMediaFile> value,
+      ) {
         if (value.isNotEmpty) {
-          final textFiles = value.where((file) => file.type == SharedMediaType.text).toList();
+          final textFiles =
+              value.where((file) => file.type == SharedMediaType.text).toList();
           if (textFiles.isNotEmpty) {
-            final sharedText = textFiles.first.path; // For text sharing, path contains the actual text
+            final sharedText =
+                textFiles
+                    .first
+                    .path; // For text sharing, path contains the actual text
             setState(() {
               _sharedText = sharedText;
             });
@@ -110,7 +126,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       });
     } else {
       // 비모바일 플랫폼에서는 더미 스트림 구독
-      _intentDataStreamSubscription = Stream<List<SharedMediaFile>>.empty().listen((_) {});
+      _intentDataStreamSubscription = Stream<List<SharedMediaFile>>.empty()
+          .listen((_) {});
     }
   }
 
@@ -200,9 +217,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                       decoration: BoxDecoration(
                         borderRadius: BorderRadius.circular(16),
                       ),
-                      child: CustomPaint(
-                        painter: _BannerPatternPainter(),
-                      ),
+                      child: CustomPaint(painter: _BannerPatternPainter()),
                     ),
                   ),
                   // 텍스트 내용
@@ -237,11 +252,16 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                         ),
                         const SizedBox(height: 16),
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 6,
+                          ),
                           decoration: BoxDecoration(
                             color: Colors.white.withOpacity(0.2),
                             borderRadius: BorderRadius.circular(20),
-                            border: Border.all(color: Colors.white.withOpacity(0.3)),
+                            border: Border.all(
+                              color: Colors.white.withOpacity(0.3),
+                            ),
                           ),
                           child: const Row(
                             mainAxisSize: MainAxisSize.min,
@@ -272,7 +292,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(
-                    '이번 달 일정',
+                    'Recents',
                     style: Theme.of(context).textTheme.titleLarge?.copyWith(
                       fontWeight: FontWeight.bold,
                     ),
@@ -292,11 +312,18 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                   padding: const EdgeInsets.all(20.0),
                   child: Column(
                     children: [
-                      Icon(Icons.account_circle, size: 50, color: Colors.grey[400]),
+                      Icon(
+                        Icons.account_circle,
+                        size: 50,
+                        color: Colors.grey[400],
+                      ),
                       const SizedBox(height: 16),
                       const Text(
                         'Google 계정 연결이 필요합니다',
-                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w500,
+                        ),
                       ),
                       const SizedBox(height: 8),
                       const Text(
@@ -326,7 +353,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     if (event.start?.timeZone == 'Asia/Seoul' && utcTime.isUtc) {
       return utcTime.add(const Duration(hours: 9));
     }
-    
+
     // 이미 로컬 시간인 경우 그대로 반환
     return utcTime.toLocal();
   }
@@ -365,98 +392,129 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       );
     }
 
-    return ListView.builder(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      itemCount: _upcomingEvents.length,
-      itemBuilder: (context, index) {
-        final event = _upcomingEvents[index];
-        final category = _getEventCategory(event);
-        final startTime = event.start?.dateTime ?? event.start?.date;
-        
-        return Card(
-          margin: const EdgeInsets.only(bottom: 8),
-          child: ListTile(
-            leading: CircleAvatar(
-              backgroundColor: _getCategoryColor(category),
-              child: Icon(
-                _getCategoryIcon(category),
-                color: Colors.white,
-                size: 20,
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.grey.shade200),
+      ),
+      child: ListView.separated(
+        shrinkWrap: true,
+        physics: const NeverScrollableScrollPhysics(),
+        itemCount: _upcomingEvents.length,
+        separatorBuilder:
+            (context, index) => Divider(
+              height: 1,
+              thickness: 1,
+              color: Colors.grey.shade200,
+              indent: 16,
+              endIndent: 16,
+            ),
+        itemBuilder: (context, index) {
+          final event = _upcomingEvents[index];
+          final category = _getEventCategory(event);
+          final startTime = event.start?.dateTime ?? event.start?.date;
+
+          return Container(
+            color: Colors.white,
+            child: ListTile(
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 16,
+                vertical: 8,
+              ),
+              leading: CircleAvatar(
+                backgroundColor: _getCategoryColor(category),
+                child: Icon(
+                  _getCategoryIcon(category),
+                  color: Colors.white,
+                  size: 20,
+                ),
+              ),
+              title: Text(
+                event.summary ?? '제목 없음',
+                style: const TextStyle(fontWeight: FontWeight.bold),
+              ),
+              subtitle: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  if (startTime != null)
+                    Text(
+                      '${DateFormat('MM월 dd일').format(_convertToKoreanTime(startTime, event))} ${DateFormat('HH:mm').format(_convertToKoreanTime(startTime, event))}',
+                    ),
+                  if (event.location != null && event.location!.isNotEmpty)
+                    Text(
+                      '📍 ${event.location}',
+                      style: TextStyle(color: Colors.grey[600]),
+                    ),
+                ],
+              ),
+              trailing: Text(
+                category,
+                style: TextStyle(
+                  color: _getCategoryColor(category),
+                  fontWeight: FontWeight.bold,
+                  fontSize: 12,
+                ),
               ),
             ),
-            title: Text(
-              event.summary ?? '제목 없음',
-              style: const TextStyle(fontWeight: FontWeight.bold),
-            ),
-            subtitle: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                if (startTime != null)
-                  Text(
-                    '${DateFormat('MM월 dd일').format(_convertToKoreanTime(startTime, event))} ${DateFormat('HH:mm').format(_convertToKoreanTime(startTime, event))}',
-                  ),
-                if (event.location != null && event.location!.isNotEmpty)
-                  Text(
-                    '📍 ${event.location}',
-                    style: TextStyle(color: Colors.grey[600]),
-                  ),
-              ],
-            ),
-            trailing: Text(
-              category,
-              style: TextStyle(
-                color: _getCategoryColor(category),
-                fontWeight: FontWeight.bold,
-                fontSize: 12,
-              ),
-            ),
-          ),
-        );
-      },
+          );
+        },
+      ),
     );
   }
 
   String _getEventCategory(calendar.Event event) {
     switch (event.colorId) {
       case '9':
-        return '업무';
+        return '예약';
       case '10':
-        return '개인';
+        return '점심';
       case '11':
-        return '건강';
+        return '골프';
       case '5':
-        return '금융';
+        return '결제';
+      case '6':
+        return '기념일';
+      case '7':
+        return '회사';
       default:
         return '기타';
     }
   }
-  
+
   Color _getCategoryColor(String category) {
     switch (category) {
-      case '업무':
-        return Colors.blue;
-      case '개인':
-        return Colors.green;
-      case '건강':
-        return Colors.red;
-      case '금융':
-        return Colors.orange;
+      case '예약':
+        return const Color(0xFF3788D8); // Google Calendar 파란색 (colorId: 9)
+      case '점심':
+        return const Color(0xFF0B8043); // Google Calendar 초록색 (colorId: 10)
+      case '골프':
+        return const Color(0xFFD50000); // Google Calendar 빨간색 (colorId: 11)
+      case '결제':
+        return const Color(0xFFFF6D01); // Google Calendar 주황색 (colorId: 5)
+      case '기념일':
+        return const Color(0xFFAD1457); // Google Calendar 자주색 (colorId: 6)
+      case '회사':
+        return const Color(0xFF8E24AA); // Google Calendar 보라색 (colorId: 7)
       default:
-        return Colors.grey;
+        return const Color(0xFF29B6F6); // 연한 하늘색
     }
   }
-  
+
   IconData _getCategoryIcon(String category) {
     switch (category) {
-      case '업무':
-        return Icons.work;
-      case '개인':
-        return Icons.person;
-      case '건강':
-        return Icons.health_and_safety;
-      case '금융':
-        return Icons.account_balance;
+      case '예약':
+        return Icons.calendar_today;
+      case '점심':
+        return Icons.restaurant;
+      case '골프':
+        return Icons.golf_course;
+      case '결제':
+        return Icons.payment;
+      case '기념일':
+        return Icons.celebration;
+      case '회사':
+        return Icons.business;
       default:
         return Icons.event;
     }
@@ -467,9 +525,10 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 class _BannerPatternPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = Colors.white.withOpacity(0.1)
-      ..strokeWidth = 1;
+    final paint =
+        Paint()
+          ..color = Colors.white.withOpacity(0.1)
+          ..strokeWidth = 1;
 
     // 격자 패턴 그리기
     for (double i = 0; i < size.width; i += 30) {

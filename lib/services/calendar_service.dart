@@ -130,14 +130,18 @@ class CalendarService {
 
   String _getCategoryColorId(String? category) {
     switch (category) {
-      case '업무':
+      case '예약':
         return '9'; // 파란색
-      case '개인':
+      case '점심':
         return '10'; // 초록색
-      case '건강':
+      case '골프':
         return '11'; // 빨간색
-      case '금융':
-        return '5'; // 노란색
+      case '결제':
+        return '5'; // 주황색
+      case '기념일':
+        return '6'; // 자주색
+      case '회사':
+        return '7'; // 보라색
       default:
         return '1'; // 기본 색상
     }
@@ -163,17 +167,7 @@ class CalendarService {
         orderBy: 'startTime',
       );
 
-      // 디버깅: 이벤트 시간 정보 출력
-      for (final event in events.items ?? []) {
-        final eventStartTime = event.start?.dateTime ?? event.start?.date;
-        print('Event: ${event.summary}');
-        print('  Raw start: ${event.start?.dateTime}');
-        print('  Raw date: ${event.start?.date}');  
-        print('  TimeZone: ${event.start?.timeZone}');
-        print('  Computed startTime: $eventStartTime');
-        print('  Local conversion: ${eventStartTime?.toLocal()}');
-        print('---');
-      }
+      // 디버깅 코드 제거 (릴리즈 빌드용)
 
       return events.items ?? [];
     } catch (e) {
