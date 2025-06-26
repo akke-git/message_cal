@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:message_cal/screens/add_screen.dart';
+import 'package:message_cal/screens/history_screen.dart';
 import 'package:message_cal/screens/home_screen.dart';
 import 'package:message_cal/screens/settings_screen.dart';
 
@@ -23,7 +23,7 @@ class _MainLayoutState extends State<MainLayout> {
 
   late final List<Widget> _widgetOptions = <Widget>[
     HomeScreen(onNavigateToSettings: () => _onItemTapped(2)),
-    const AddScreen(),
+    const HistoryScreen(),
     const SettingsScreen(),
   ];
 
@@ -46,8 +46,8 @@ class _MainLayoutState extends State<MainLayout> {
             label: '홈',
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.add_circle),
-            label: '추가',
+            icon: Icon(Icons.history),
+            label: '히스토리',
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.settings),

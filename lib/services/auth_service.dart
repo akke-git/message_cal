@@ -28,13 +28,42 @@ class AuthService {
         // 권한 확인
         final auth = await account.authentication;
         if (auth.accessToken != null) {
-          print('Google sign-in successful');
+          print('Google sign-in successful: ${account.email}');
           return account;
         }
       }
       return null;
     } catch (error) {
       print('Error signing in with Google: $error');
+      return null;
+    }
+  }
+
+  Future<GoogleSignInAccount?> signInSilently() async {
+    // 모바일 플랫폼이 아닌 경우 null 반환
+    if (!_isMobilePlatform()) {
+      print('AUTH_SERVICE: Silent sign-in not supported on this platform');
+      return null;
+    }
+    
+    try {
+      print('AUTH_SERVICE: Attempting silent sign-in...');
+      final GoogleSignInAccount? account = await _googleSignIn.signInSilently();
+      if (account != null) {
+        // 권한 확인
+        final auth = await account.authentication;
+        if (auth.accessToken != null) {
+          print('AUTH_SERVICE: Silent sign-in successful: ${account.email}');
+          return account;
+        } else {
+          print('AUTH_SERVICE: Silent sign-in failed - no access token');
+        }
+      } else {
+        print('AUTH_SERVICE: Silent sign-in failed - no account returned');
+      }
+      return null;
+    } catch (error) {
+      print('AUTH_SERVICE: Error during silent sign-in: $error');
       return null;
     }
   }
@@ -87,6 +116,11 @@ class AuthService {
       print('Failed to get auth headers: $e');
       return null;
     }
+  }
+
+  Future<String?> getUserEmail() async {
+    final user = getCurrentUser();
+    return user?.email;
   }
 
   bool _isMobilePlatform() {

@@ -26,16 +26,35 @@ class _SettingsScreenState extends State<SettingsScreen> {
     });
     
     try {
-      final isSignedIn = await _authService.isSignedIn();
-      if (isSignedIn) {
+      print('SETTINGS_SCREEN: Checking sign-in status...');
+      
+      // 먼저 현재 로그인 상태 확인
+      bool isSignedIn = await _authService.isSignedIn();
+      
+      if (!isSignedIn) {
+        print('SETTINGS_SCREEN: Not signed in, attempting silent sign-in...');
+        // 로그인되어 있지 않다면 자동 로그인 시도
+        final account = await _authService.signInSilently();
+        if (account != null) {
+          _currentUser = account;
+          print('SETTINGS_SCREEN: Silent sign-in successful: ${account.email}');
+        } else {
+          print('SETTINGS_SCREEN: Silent sign-in failed');
+          _currentUser = null;
+        }
+      } else {
         _currentUser = _authService.getCurrentUser();
+        print('SETTINGS_SCREEN: Already signed in: ${_currentUser?.email}');
       }
     } catch (e) {
-      print('Error checking sign-in status: $e');
+      print('SETTINGS_SCREEN: Error checking sign-in status: $e');
+      _currentUser = null;
     } finally {
-      setState(() {
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
     }
   }
 
